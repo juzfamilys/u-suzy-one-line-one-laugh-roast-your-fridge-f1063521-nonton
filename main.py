@@ -27,6 +27,27 @@ def validate(text):
     return None
 
 
+def validate_entry(path):
+    """Re-read the written entry from disk and re-validate the gate.
+
+    Reads the file as raw bytes, decodes as UTF-8, and requires the
+    content to be byte-for-byte identical to the expected entry, then
+    re-runs the same gate checks (1-200 chars, single line, non-blank).
+    """
+    with open(path, "rb") as f:
+        raw = f.read()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return "entry.txt is not valid UTF-8"
+    if raw != ENTRY.encode("utf-8"):
+        return "entry.txt differs from the expected entry"
+    error = validate(text)
+    if error:
+        return "re-validation failed: %s" % error
+    return None
+
+
 def main():
     error = validate(ENTRY)
     if error:
@@ -35,6 +56,10 @@ def main():
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(ENTRY)
+    error = validate_entry(OUTPUT_PATH)
+    if error:
+        print("INVALID: %s" % error, file=sys.stderr)
+        return 1
     print("Wrote %d characters to %s" % (len(ENTRY), OUTPUT_PATH))
     print(ENTRY)
     return 0
